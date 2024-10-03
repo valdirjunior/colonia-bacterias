@@ -3,8 +3,10 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdlib.h>
+#include <semaphore.h>
 
 
 int main() {
-    printf("Ohaio!\n");
+
+    return 0;
 }
