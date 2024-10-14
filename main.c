@@ -180,8 +180,6 @@ void* threadFunction(void *args) {
     while (threadArgs->tempoAtual <= threadArgs->tempoTotal) {
         sleep(rand() % 5);
 
-        time_t tempoRodadaAlimentação = time(NULL);
-
         signal(SIGALRM, handleTimeout);
         alarm(TIME_LIMIT);
 
