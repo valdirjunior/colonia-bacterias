@@ -7,12 +7,12 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${workspaceFolder}/main.c",
+                "${workspaceFolder}/${fileBasename}",
                 "-lpthread",
                 "-lrt",
                 "-lm",
                 "-o",
-                "${workspaceFolder}/main"
+                "${workspaceFolder}/${fileBasenameNoExtension}"
             ],
             "options": {
                 "cwd": "${fileDirname}"
