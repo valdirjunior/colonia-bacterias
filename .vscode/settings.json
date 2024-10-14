@@ -1,6 +1,11 @@
 {
     "files.associations": {
         "stdlib.h": "c",
-        "semaphore.h": "c"
+        "semaphore.h": "c",
+        "struct_timespec.h": "c",
+        "stdbool.h": "c",
+        "math.h": "c",
+        "time.h": "c",
+        "errno.h": "c"
     }
 }
