@@ -1,3 +1,12 @@
+/*
+Aplicando a prevenção por Mutex Hierárquico:
+Alteração:
+    - Adicionado um novo recurso que será pego antes dos demais: Técnico de Laboratorio.
+
+Todas as colônias precisarão de um técnico para lhes fornecer os outros recursos. O semáforo tecnico
+será pego primeiro, caso consiga, irá pegar os demais, mesmo tendo dois tipos de colônias.
+*/
+
 #include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -8,9 +17,6 @@
 #include <semaphore.h>
 #include <time.h>
 #include <errno.h>
-#include <signal.h>
-
-#define TIME_LIMIT 20  //Tempo em segundos para considerar um deadlock
 
 #ifndef __GLIBC_USE_LIB_EXT1
     typedef int errno_t;
@@ -36,6 +42,7 @@ typedef struct {
     int tempoAtual;              //Contador de tempo
     sem_t* alimento;             //Semáforo para o alimento
     sem_t* espaco;               //Semáforo para o espaço
+    sem_t* tecnico;              //Semáforo para o técnico de laboratório
     double tempoDecorrido;       //Contador do tempo real de execução, para controle e debug
 }ThreadArgs;
 
@@ -76,6 +83,10 @@ int main(int argc, char **argv) {
     sem_t espaco;
     sem_init(&espaco, 0, inputFlags.numRecursos);
 
+    //Inicializa semáforos de técnicos
+    sem_t tecnico;
+    sem_init(&tecnico, 0, inputFlags.numRecursos);
+
     ThreadArgs *threadArgs = malloc(sizeof(ThreadArgs) * inputFlags.numThreads);
     pthread_t threads[inputFlags.numThreads];
 
@@ -95,6 +106,7 @@ int main(int argc, char **argv) {
         threadArgs[i].popAtual = inputFlags.popInicial;
         threadArgs[i].alimento = &alimento;
         threadArgs[i].espaco = &espaco;
+        threadArgs[i].tecnico = &tecnico;
         threadArgs[i].tempoDecorrido = 0;
 
         pthread_create(&threads[i], NULL, threadFunction, &threadArgs[i]);
@@ -106,6 +118,7 @@ int main(int argc, char **argv) {
 
     sem_destroy(&alimento);
     sem_destroy(&espaco);
+    sem_destroy(&tecnico);
 
     return 0;
 }
@@ -190,9 +203,9 @@ void* threadFunction(void *args) {
         //Thread dorme até 5s antes de tentar pegar recurso
         sleep(rand() % 5);
 
-        //Definição de alarme que age ao estrapolar o temmpo definido para deadlock
-        signal(SIGALRM, deadlockTimeout);
-        alarm(TIME_LIMIT);
+        //Thread pega um técnico de laboratório para lhe servir alimento e espaço
+        sem_wait(threadArgs->tecnico);
+        printf("Thread %d[tipo %d] pegou um técnico!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);    
 
         //Se a colônia for do tipo 1, irá pegar o alimento primeiro e depois o espaço
         if(threadArgs->tipoColonia == 1) {
@@ -211,9 +224,6 @@ void* threadFunction(void *args) {
             printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
         }
 
-        //Zera o tempo do alarme, sinalizando que a operação até aqui não ultrapassou o tempo estipulado
-        alarm(0);
-
         //Thread dorme por até 5s após pegar os dois recursos, simulando crescimento
         sleep(rand() % 5);
 
@@ -227,6 +237,8 @@ void* threadFunction(void *args) {
         printf("Thread %d[tipo %d] liberou espaço!\n", threadArgs->threadNum, threadArgs->tipoColonia);
         printf("\n");
         printf("Tempo de crescimento da thread %d: %d\n\n", threadArgs->threadNum, threadArgs->tempoAtual);
+        sem_post(threadArgs->tecnico);
+        printf("Thread %d[tipo %d] liberou técnico!\n", threadArgs->threadNum, threadArgs->tipoColonia);
         threadArgs->tempoAtual ++; 
     }
     //Cálculo do tempo real em segundos que a thread executou

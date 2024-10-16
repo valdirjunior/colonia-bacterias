@@ -1,3 +1,12 @@
+/*
+Aplicando a prevenção por Ordenação de Recursos:
+Alteração:
+    - Removido os diferentes tipos de colônias.
+
+Todas as colônias pegarão recurso na mesma orden, evitando que uma delas bloqueie um recurso
+que a outra está tentando pegar.
+*/
+
 #include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -8,17 +17,12 @@
 #include <semaphore.h>
 #include <time.h>
 #include <errno.h>
-#include <signal.h>
-
-#define TIME_LIMIT 20
-
-// #define NUM_THREADS 4
-// #define NUM_RECURSOS 2
 
 #ifndef __GLIBC_USE_LIB_EXT1
     typedef int errno_t;
 #endif
 
+//Struct para as flags via linha de comando
 typedef struct {
     int popInicial;
     int txCrescimento;
@@ -27,19 +31,21 @@ typedef struct {
     int numRecursos;
 } InputFlags;
 
+//Argumentos que cada thread receberá
 typedef struct {
-    int threadNum;
-    int tipoColonia;
-    double popInicial;
-    double txCrescimento;
-    double popAtual;
-    int tempoTotal;
-    int tempoAtual;
-    sem_t* alimento;
-    sem_t* espaco;
-    double tempoDecorrido;
+    int threadNum;               //Número da thread, para visualizar os eventos melhor
+    int tipoColonia;             //Tipo da colônia, para que haja cenário para o deadlock
+    double popInicial;           //População inicial da colônia de bactérias
+    double txCrescimento;        //Taxa de crescimento em %, ex: 2 = 2%
+    double popAtual;             //Contador de população no decorrer do tempo
+    int tempoTotal;              //Tempo final da simulação de crescimento, não será o tempo real, e sim o limite do contador
+    int tempoAtual;              //Contador de tempo
+    sem_t* alimento;             //Semáforo para o alimento
+    sem_t* espaco;               //Semáforo para o espaço
+    double tempoDecorrido;       //Contador do tempo real de execução, para controle e debug
 }ThreadArgs;
 
+//Struct para as opções de entrada manual de argumentos
 static struct option long_options[] = 
 {
     {"popInicial", required_argument, NULL, 'p'},
@@ -53,7 +59,6 @@ static struct option long_options[] =
 
 errno_t manualImput(int argc, char **argv, InputFlags *inputFlags);
 void* threadFunction(void *args);
-void handleTimeout(int signum);
 
 int main(int argc, char **argv) {
 
@@ -64,28 +69,35 @@ int main(int argc, char **argv) {
 
     err = manualImput(argc, argv, &inputFlags);
 
+    if (err != 0) {
+        return 1;
+    }    
+
+    //Inicializa semáforos de alimentos
     sem_t alimento;
     sem_init(&alimento, 0, inputFlags.numRecursos);
 
+    //Inicializa semáforos de espaços
     sem_t espaco;
     sem_init(&espaco, 0, inputFlags.numRecursos);
 
     ThreadArgs *threadArgs = malloc(sizeof(ThreadArgs) * inputFlags.numThreads);
     pthread_t threads[inputFlags.numThreads];
 
+    //Inicializador das threads
     for(int i = 0; i < inputFlags.numThreads; i++) {
-        int tipo = rand() % 3;
-        if(tipo == 1) {
-            threadArgs[i].tipoColonia = 2;
-        } else {
-            threadArgs[i].tipoColonia = 1;
-        }
+        // //Defino a primeira thread como tipo 2, e as demais como tipo 1
+        // if(i == 0) {
+        //     threadArgs[i].tipoColonia = 2;
+        // } else {
+        //     threadArgs[i].tipoColonia = 1;
+        // }
         threadArgs[i].threadNum = i + 1;
         threadArgs[i].popInicial = inputFlags.popInicial;
         threadArgs[i].txCrescimento = inputFlags.txCrescimento;
         threadArgs[i].tempoTotal = inputFlags.tempoTotal;
         threadArgs[i].tempoAtual = 1;
-        threadArgs[i].popAtual = 100;
+        threadArgs[i].popAtual = inputFlags.popInicial;
         threadArgs[i].alimento = &alimento;
         threadArgs[i].espaco = &espaco;
         threadArgs[i].tempoDecorrido = 0;
@@ -103,6 +115,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+//Função para receber os argumentos via linha de comando
 errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
     int opt;
     bool obtevePopInicial = false;
@@ -172,39 +185,30 @@ errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
     return EXIT_SUCCESS;   
 }
 
+//Função que cada thread irá executar
 void* threadFunction(void *args) {
     time_t tempoInicio = time(NULL);
 
     ThreadArgs *threadArgs = (ThreadArgs *)args;
 
     while (threadArgs->tempoAtual <= threadArgs->tempoTotal) {
+        //Thread dorme até 5s antes de tentar pegar recurso
         sleep(rand() % 5);
 
-        signal(SIGALRM, handleTimeout);
-        alarm(TIME_LIMIT);
-
-        if(threadArgs->tipoColonia == 1) {
-            sem_wait(threadArgs->alimento);
-            printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);    
-        } else {
-            sem_wait(threadArgs->espaco);
-            printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        }
-
-        if(threadArgs->tipoColonia == 1) {
-            sem_wait(threadArgs->espaco);
-            printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        } else {
-            sem_wait(threadArgs->alimento);
-            printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        }
-
-        alarm(0);
-
+        //Thread pega primero o espaço
+        sem_wait(threadArgs->espaco);
+        printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+        //Thread pega depois o alimento
+        sem_wait(threadArgs->alimento);
+        printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+        
+        //Thread dorme por até 5s após pegar os dois recursos, simulando crescimento
         sleep(rand() % 5);
 
-        threadArgs->popAtual = threadArgs->popAtual * (1 + (threadArgs->txCrescimento / 10));
+        //Somatória de crescimento: P(t) = P(0) * e^(rt), no caso, o meu P(0) é o P(t-1), pois calcula a cada passo de tempo, e o t da exponencial será sempre 1
+        threadArgs->popAtual = threadArgs->popAtual * exp((threadArgs->txCrescimento / 100));
 
+        //Thread libera os recursos
         sem_post(threadArgs->alimento);
         printf("Thread %d[tipo %d] liberou alimento!\n", threadArgs->threadNum, threadArgs->tipoColonia);
         sem_post(threadArgs->espaco);
@@ -213,19 +217,14 @@ void* threadFunction(void *args) {
         printf("Tempo de crescimento da thread %d: %d\n\n", threadArgs->threadNum, threadArgs->tempoAtual);
         threadArgs->tempoAtual ++; 
     }
+    //Cálculo do tempo real em segundos que a thread executou
     threadArgs->tempoDecorrido = difftime(time(NULL), tempoInicio);
 
     printf("Thread %d terminou\n", threadArgs->threadNum);
-    printf("Tipo da colonia: %d\n", threadArgs->tipoColonia);
     printf("População inicial: %g\n", threadArgs->popInicial);
     printf("Taxa de crescimento: %g\n", threadArgs->txCrescimento / 10);
     printf("Tempo: %d\n", threadArgs->tempoTotal);
     printf("População final: %g\n", threadArgs->popAtual);
     printf("Tempo decorrido: %gs\n", threadArgs->tempoDecorrido);
     printf("\n\n");
-}
-
-void handleTimeout(int signum) {
-    printf("DEADLOCK DETECTADO!!! Tempo de espera excedido! Encerrando...\n\n");
-    exit(1);
 }

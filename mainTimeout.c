@@ -1,3 +1,12 @@
+/*
+Aplicando a prevenção por Timeout ou Recurso de Recuperação:
+Alteração:
+    - Adicionado uso da função sem_trywait, com verificação de timeout.
+
+Todas as colônias terão uma função de timeout, esta função fará com que o primeiro recurso seja
+liberado caso não seja possível obter o segundo dentro de um intervalo de tempo definido.
+*/
+
 #include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -10,7 +19,7 @@
 #include <errno.h>
 #include <signal.h>
 
-#define TIME_LIMIT 20  //Tempo em segundos para considerar um deadlock
+#define TIME_LIMIT 20  //Tempo em segundos para soltar o recurso e tentar novamente
 
 #ifndef __GLIBC_USE_LIB_EXT1
     typedef int errno_t;
@@ -53,7 +62,6 @@ static struct option long_options[] =
 
 errno_t manualImput(int argc, char **argv, InputFlags *inputFlags);
 void* threadFunction(void *args);
-void deadlockTimeout(int signum);
 
 int main(int argc, char **argv) {
 
@@ -182,7 +190,8 @@ errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
 
 //Função que cada thread irá executar
 void* threadFunction(void *args) {
-    time_t tempoInicio = time(NULL);
+    time_t tempoInicio = time(NULL); //Marcador de tempo do início da execução da thread
+    double tempoColetaRecurso;       //Marcador para o tempo aguardando segundo recurso
 
     ThreadArgs *threadArgs = (ThreadArgs *)args;
 
@@ -190,9 +199,8 @@ void* threadFunction(void *args) {
         //Thread dorme até 5s antes de tentar pegar recurso
         sleep(rand() % 5);
 
-        //Definição de alarme que age ao estrapolar o temmpo definido para deadlock
-        signal(SIGALRM, deadlockTimeout);
-        alarm(TIME_LIMIT);
+        //Marcador do início do tempo de aguardo por recurso
+        time_t tempoInicioColetaRecurso = time(NULL);
 
         //Se a colônia for do tipo 1, irá pegar o alimento primeiro e depois o espaço
         if(threadArgs->tipoColonia == 1) {
@@ -203,16 +211,41 @@ void* threadFunction(void *args) {
             printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
         }
 
-        if(threadArgs->tipoColonia == 1) {
-            sem_wait(threadArgs->espaco);
-            printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        } else {
-            sem_wait(threadArgs->alimento);
-            printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        }
+        //Thread  tentará pegará o segundo recurso
+        while (1) {
+            if(threadArgs->tipoColonia == 1) {
+                printf("Thread %d[tipo %d] tentando pegar espaço\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                if(sem_trywait(threadArgs->espaco) == 0) { //Caso sem_trywait retorne 0, significa que conseguiu o recurso
+                    printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    break; //Caso tenha conseguido pegar o recurso
+                }
 
-        //Zera o tempo do alarme, sinalizando que a operação até aqui não ultrapassou o tempo estipulado
-        alarm(0);
+                //Difftime calcula a diferença de tempo dos parâmetros e retorna o valor do tipo double em segundos 
+                tempoColetaRecurso = difftime(time(NULL), tempoInicioColetaRecurso);
+
+                if(tempoColetaRecurso >= TIME_LIMIT){ //Caso o tempo de tenha extrapolado irá liberar o recurso 
+                    printf("Thread %d[tipo %d] não conseguiu pegar espaço! Liberando alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    sem_post(threadArgs->alimento);
+                    return NULL;
+                }
+            } else {
+                printf("Thread %d[tipo %d] tentando pegar alimento\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                if(sem_trywait(threadArgs->alimento) == 0) {
+                    printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    break; //Caso tenha conseguido pegar o recurso
+                }
+
+                //Difftime calcula a diferença de tempo dos parâmetros e retorna o valor do tipo double em segundos
+                tempoColetaRecurso = difftime(time(NULL), tempoInicioColetaRecurso);
+
+                if(tempoColetaRecurso >= TIME_LIMIT){ //Caso o tempo de tenha extrapolado irá liberar o recurso
+                    printf("Thread %d[tipo %d] não conseguiu pegar alimento! Liberando espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    sem_post(threadArgs->espaco);
+                    return NULL;
+                }
+            }
+            sleep(1); //thread dorme por 1s antes de tentar novamente
+        }
 
         //Thread dorme por até 5s após pegar os dois recursos, simulando crescimento
         sleep(rand() % 5);
@@ -240,11 +273,4 @@ void* threadFunction(void *args) {
     printf("População final: %g\n", threadArgs->popAtual);
     printf("Tempo decorrido: %gs\n", threadArgs->tempoDecorrido);
     printf("\n\n");
-}
-
-//Função executada caso o tempo estipulado seja estrapolado
-void deadlockTimeout(int signum) {
-    //Exibe mensagem e encerra a aplicação
-    printf("DEADLOCK DETECTADO!!! Tempo de espera excedido! Encerrando...\n\n");
-    exit(1);
 }
