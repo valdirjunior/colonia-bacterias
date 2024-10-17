@@ -105,4 +105,4 @@ Foram realizados alguns testes com cenários distintos. Minha máquina pessoal p
 
 O principal cenário testado foi com 4 threads e 1 recurso de cada, com 15 intervalos de tempo. É o cenário com a maior probabilidade de ocorrer deadlock. Com mais recurso disponível foram pouquíssimas vezes que ocorreu, mesmo com mais tempo.
 
-Para 4 threads, 1 recurso e 15s, o melhor desempenho foi do método [Timeout](./timeout.c).
+No geral, o melhor desempenho foi do método [Timeout](./timeout.c). Nos testes com 4 threads, 1 recurso e 15s, chegou executar em quase a metade do tempo das outras.
