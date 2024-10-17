@@ -51,7 +51,7 @@ Caso ainda tenha dúvidas, utilize:
 
 ou
 
-    ./nomedoarquivocompilado -H    
+    ./nomedoarquivocompilado -h    
 
 
 
