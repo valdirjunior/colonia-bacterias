@@ -3,8 +3,8 @@ Aplicando a prevenção por Mutex Hierárquico:
 Alteração:
     - Adicionado um novo recurso que será pego antes dos demais: Técnico de Laboratorio.
 
-Todas as colônias precisarão de um técnico para lhes fornecer os outros recursos. O semáforo tecnico
-será pego primeiro, caso consiga, irá pegar os demais, mesmo tendo dois tipos de colônias.
+Todas as colônias precisarão de um técnico para lhes fornecer os outros recursos. O semáforo
+tecnico será pego primeiro, caso consiga, irá pegar os demais, mesmo tendo dois tipos de colônias.
 
 Para compilar utilize:
 

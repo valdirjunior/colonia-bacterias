@@ -3,8 +3,8 @@ Aplicando a prevenção por Ordenação de Recursos:
 Alteração:
     - Removido os diferentes tipos de colônias.
 
-Todas as colônias pegarão recurso na mesma orden, evitando que uma delas bloqueie um recurso
-que a outra está tentando pegar.
+Todas as colônias pegarão recurso na mesma orden, evitando que uma delas bloqueie
+um recurso que a outra está tentando pegar.
 
 Para compilar utilize:
 

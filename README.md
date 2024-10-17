@@ -4,7 +4,6 @@ Para o aprendizado sobre compartilhamento de recursos por tarefas distintas, for
 
 Segue a descrição:
 
-
 1.  No arquivo [deadlock.c](./deadlock.c) defini 2 tipos de colônias, assim, algumas colônias obtém os recursos na ordem contrária das demais, ocasionando possíveis deadlocks. Não há mecanismos que previnam ou solucionem.
 
 2. No arquivo [ordenacao.c](./ordenacao.c) apliquei o método de Ordenação de Recursos. Todas as colônias vão obter os recursos na mesma ordem. Desta forma elimina-se a possibilidade de uma colônia reter um recurso que outra tentará pegar.
@@ -14,7 +13,6 @@ Segue a descrição:
 4. No arquivo [timeout.c](./timeout.c) apliquei o método de Timeout. Quando uma colônia pegar o primeiro recurso e não conseguir pegar o segundo, irá tentar novamente durante um tempo predefinido. Caso extrapole o tempo e não tenha obtido o segundo recurso, o primeiro recurso será liberado e irá tentar obter os dois recursos posteriormente.
 
 5. Cada arquivo contém as instruções para compilar, executar e os comandos básicos. Caso preferir, pode consultar na seção [Instruções](#instruções)
-
 
 # Crescimento Populacional #
 
@@ -27,7 +25,7 @@ $$P(t) = P(0) . e^{rt}$$
 - *r* = Taxa de crescimento;
 - *t* = Tempo em segundos.
 
-Como cada ciclo da thread simula 1s de tempo, o cálculo considera *t* como sendo sempre 1. *P(t)* será a somatória total, e *P(0)* será a população no início de cada ciclo. No problema, não levamos em conta a quantidade de alimento ou a aréa disponível, supomos que as quantidades sejam ilimitadas. Os recursos em questão são tratados como vias de acesso à essas regalias, ou seja, se eu executar com 1 recurso de cada, significa que tenho 1 via de acesso, 1 caminho, para alimento e para espaço. Desta maneira, conseguimos compreender o tema principal(compartilhamento de recursos) sem elevar considerávelmente a complexidade do problema.
+Como cada ciclo da thread simula 1s de tempo, o cálculo considera *t* como sendo sempre 1. *P(t)* será a somatória total, e *P(0)* será a população no início de cada ciclo. No problema, não levamos em conta a quantidade de alimento ou a aréa disponível, supomos que as quantidades sejam ilimitadas. Os recursos em questão são tratados como vias de acesso a essas regalias, ou seja, se eu executar com 1 recurso de cada, significa que tenho 1 via de acesso, 1 caminho, para alimento e para espaço. Desta maneira, conseguimos compreender o tema principal(compartilhamento de recursos) sem elevar considerávelmente a complexidade do problema.
 
 # Instruções #
 
@@ -52,8 +50,6 @@ Caso ainda tenha dúvidas, utilize:
 ou
 
     ./nomedoarquivocompilado -h    
-
-
 
 ## Deadlocks ##
 
