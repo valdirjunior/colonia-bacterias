@@ -5,6 +5,33 @@ Alteração:
 
 Todas as colônias pegarão recurso na mesma orden, evitando que uma delas bloqueie um recurso
 que a outra está tentando pegar.
+
+Para compilar utilize:
+
+gcc -o ordenacao ordenacao.c -lpthread -lrt -lm
+
+Para executar utilize(Você pode substituir pelos valores de sua preferência):
+
+./ordenacao -p 200 -x 3 -t 15 -n 4 -r 1
+
+-p = população inicial                    ex: 200
+-x = taxa de crescimento em %             ex: 3%
+-t = tempo total simulado em segundos     ex: 15
+-n = número de threads                    ex: 4
+-r = número de recursos de cada tipo      ex: 1
+
+Para que haja deadlock, o número de recursos precisa ser  menor do que o
+número de threads. Mais tempo de simulação também favorece para que ocorram
+deadlocks. Caso não informe o número de threads, a quantidade será definida
+pelo seu processador.
+Em caso de dúvida sobre os comandos, execute no terminal:
+
+./ordenacao -h
+
+ou
+
+./ordenacao --help
+
 */
 
 #include <getopt.h>
@@ -48,11 +75,11 @@ typedef struct {
 //Struct para as opções de entrada manual de argumentos
 static struct option long_options[] = 
 {
-    {"popInicial", required_argument, NULL, 'p'},
-    {"txCrescimento", required_argument, NULL, 'x'},
-    {"tempoTotal", required_argument, NULL, 't'},
-    {"numThreads", required_argument, NULL, 'n'},
-    {"numRecursos", required_argument, NULL, 'r'},
+    {"populacao", required_argument, NULL, 'p'},
+    {"taxa", required_argument, NULL, 'x'},
+    {"tempo", required_argument, NULL, 't'},
+    {"threads", required_argument, NULL, 'n'},
+    {"recursos", required_argument, NULL, 'r'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
 };
@@ -86,12 +113,7 @@ int main(int argc, char **argv) {
 
     //Inicializador das threads
     for(int i = 0; i < inputFlags.numThreads; i++) {
-        // //Defino a primeira thread como tipo 2, e as demais como tipo 1
-        // if(i == 0) {
-        //     threadArgs[i].tipoColonia = 2;
-        // } else {
-        //     threadArgs[i].tipoColonia = 1;
-        // }
+        threadArgs[i].tipoColonia = 1;
         threadArgs[i].threadNum = i + 1;
         threadArgs[i].popInicial = inputFlags.popInicial;
         threadArgs[i].txCrescimento = inputFlags.txCrescimento;
@@ -151,12 +173,12 @@ errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
         case 'h':
             printf("Acessando: %s [OPÇÕES]\n", argv[0]);
             printf("Opções: \n");
-            printf("\t-p, --popInicial\t\tPopulação inicial\n");
-            printf("\t-x, --txCrescimento\t\tTaxa de crescimento\n");
-            printf("\t-t, --tempoTotal\t\tTempo total");
-            printf("\t-n, --numThreads\t\tNúmero de threads\n");
-            printf("\t-r, --numRecursos\t\tNúmero de recursos\n");
-            printf("\t-h, --help\t\t\tExibir esta mensagem de ajuda\n");
+            printf("\t-p, --populacao popInicial\t\tPopulação inicial\n");
+            printf("\t-x, --taxa txCrescimento\t\tTaxa de crescimento\n");
+            printf("\t-t, --tempo tempoTotal\t\t\tTempo total\n");
+            printf("\t-n, --threads numThreads\t\tNúmero de threads\n");
+            printf("\t-r, --recursos numRecursos\t\tNúmero de recursos\n");
+            printf("\t-h, --help\t\t\t\tExibir esta mensagem de ajuda\n");
             return EINVAL;
         default:
             break;
@@ -192,8 +214,8 @@ void* threadFunction(void *args) {
     ThreadArgs *threadArgs = (ThreadArgs *)args;
 
     while (threadArgs->tempoAtual <= threadArgs->tempoTotal) {
-        //Thread dorme até 5s antes de tentar pegar recurso
-        sleep(rand() % 5);
+        //Thread dorme até 2s antes de tentar pegar recurso
+        sleep(rand() % 2);
 
         //Thread pega primero o espaço
         sem_wait(threadArgs->espaco);
@@ -222,7 +244,7 @@ void* threadFunction(void *args) {
 
     printf("Thread %d terminou\n", threadArgs->threadNum);
     printf("População inicial: %g\n", threadArgs->popInicial);
-    printf("Taxa de crescimento: %g\n", threadArgs->txCrescimento / 10);
+    printf("Taxa de crescimento: %g%\n", threadArgs->txCrescimento);
     printf("Tempo: %d\n", threadArgs->tempoTotal);
     printf("População final: %g\n", threadArgs->popAtual);
     printf("Tempo decorrido: %gs\n", threadArgs->tempoDecorrido);

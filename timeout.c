@@ -1,3 +1,39 @@
+/*
+Aplicando a prevenção por Timeout ou Recurso de Recuperação:
+Alteração:
+    - Adicionado uso da função sem_trywait, com verificação de timeout.
+
+Todas as colônias terão uma função de timeout, esta função fará com que o primeiro recurso seja
+liberado caso não seja possível obter o segundo dentro de um intervalo de tempo definido.
+
+Para compilar utilize:
+
+gcc -o timeout timeout.c -lpthread -lrt -lm
+
+Para executar utilize(Você pode substituir pelos valores de sua preferência):
+
+./timeout -p 200 -x 3 -t 15 -n 4 -r 1
+
+-p = população inicial                    ex: 200
+-x = taxa de crescimento em %             ex: 3%
+-t = tempo total simulado em segundos     ex: 15
+-n = número de threads                    ex: 4
+-r = número de recursos de cada tipo      ex: 1
+
+Para que haja deadlock, o número de recursos precisa ser  menor do que o
+número de threads. Mais tempo de simulação também favorece para que ocorram
+deadlocks. Caso não informe o número de threads, a quantidade será definida
+pelo seu processador.
+Em caso de dúvida sobre os comandos, execute no terminal:
+
+./timeout -h
+
+ou
+
+./timeout --help
+
+*/
+
 #include <getopt.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -10,7 +46,7 @@
 #include <errno.h>
 #include <signal.h>
 
-#define TIME_LIMIT 20  //Tempo em segundos para considerar um deadlock
+#define TIME_LIMIT 20  //Tempo em segundos para soltar o recurso e tentar novamente
 
 #ifndef __GLIBC_USE_LIB_EXT1
     typedef int errno_t;
@@ -42,18 +78,17 @@ typedef struct {
 //Struct para as opções de entrada manual de argumentos
 static struct option long_options[] = 
 {
-    {"popInicial", required_argument, NULL, 'p'},
-    {"txCrescimento", required_argument, NULL, 'x'},
-    {"tempoTotal", required_argument, NULL, 't'},
-    {"numThreads", required_argument, NULL, 'n'},
-    {"numRecursos", required_argument, NULL, 'r'},
+    {"populacao", required_argument, NULL, 'p'},
+    {"taxa", required_argument, NULL, 'x'},
+    {"tempo", required_argument, NULL, 't'},
+    {"threads", required_argument, NULL, 'n'},
+    {"recursos", required_argument, NULL, 'r'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
 };
 
 errno_t manualImput(int argc, char **argv, InputFlags *inputFlags);
 void* threadFunction(void *args);
-void deadlockTimeout(int signum);
 
 int main(int argc, char **argv) {
 
@@ -82,7 +117,7 @@ int main(int argc, char **argv) {
     //Inicializador das threads
     for(int i = 0; i < inputFlags.numThreads; i++) {
         //Defino a primeira thread como tipo 2, e as demais como tipo 1
-        if(i == 0) {
+        if((i % 2) == 0) {
             threadArgs[i].tipoColonia = 2;
         } else {
             threadArgs[i].tipoColonia = 1;
@@ -146,12 +181,12 @@ errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
         case 'h':
             printf("Acessando: %s [OPÇÕES]\n", argv[0]);
             printf("Opções: \n");
-            printf("\t-p, --popInicial\t\tPopulação inicial\n");
-            printf("\t-x, --txCrescimento\t\tTaxa de crescimento\n");
-            printf("\t-t, --tempoTotal\t\tTempo total");
-            printf("\t-n, --numThreads\t\tNúmero de threads\n");
-            printf("\t-r, --numRecursos\t\tNúmero de recursos\n");
-            printf("\t-h, --help\t\t\tExibir esta mensagem de ajuda\n");
+            printf("\t-p, --populacao popInicial\t\tPopulação inicial\n");
+            printf("\t-x, --taxa txCrescimento\t\tTaxa de crescimento\n");
+            printf("\t-t, --tempo tempoTotal\t\t\tTempo total\n");
+            printf("\t-n, --threads numThreads\t\tNúmero de threads\n");
+            printf("\t-r, --recursos numRecursos\t\tNúmero de recursos\n");
+            printf("\t-h, --help\t\t\t\tExibir esta mensagem de ajuda\n");
             return EINVAL;
         default:
             break;
@@ -182,17 +217,17 @@ errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
 
 //Função que cada thread irá executar
 void* threadFunction(void *args) {
-    time_t tempoInicio = time(NULL);
+    time_t tempoInicio = time(NULL); //Marcador de tempo do início da execução da thread
+    double tempoColetaRecurso;       //Marcador para o tempo aguardando segundo recurso
 
     ThreadArgs *threadArgs = (ThreadArgs *)args;
 
     while (threadArgs->tempoAtual <= threadArgs->tempoTotal) {
-        //Thread dorme até 5s antes de tentar pegar recurso
-        sleep(rand() % 5);
+        //Thread dorme até 2s antes de tentar pegar recurso
+        sleep(rand() % 2);
 
-        //Definição de alarme que age ao estrapolar o temmpo definido para deadlock
-        signal(SIGALRM, deadlockTimeout);
-        alarm(TIME_LIMIT);
+        //Marcador do início do tempo de aguardo por recurso
+        time_t tempoInicioColetaRecurso = time(NULL);
 
         //Se a colônia for do tipo 1, irá pegar o alimento primeiro e depois o espaço
         if(threadArgs->tipoColonia == 1) {
@@ -203,16 +238,41 @@ void* threadFunction(void *args) {
             printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
         }
 
-        if(threadArgs->tipoColonia == 1) {
-            sem_wait(threadArgs->espaco);
-            printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        } else {
-            sem_wait(threadArgs->alimento);
-            printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        }
+        //Thread  tentará pegará o segundo recurso
+        while (1) {
+            if(threadArgs->tipoColonia == 1) {
+                printf("Thread %d[tipo %d] tentando pegar espaço\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                if(sem_trywait(threadArgs->espaco) == 0) { //Caso sem_trywait retorne 0, significa que conseguiu o recurso
+                    printf("Thread %d[tipo %d] pegou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    break; //Caso tenha conseguido pegar o recurso
+                }
 
-        //Zera o tempo do alarme, sinalizando que a operação até aqui não ultrapassou o tempo estipulado
-        alarm(0);
+                //Difftime calcula a diferença de tempo dos parâmetros e retorna o valor do tipo double em segundos 
+                tempoColetaRecurso = difftime(time(NULL), tempoInicioColetaRecurso);
+
+                if(tempoColetaRecurso >= TIME_LIMIT){ //Caso o tempo de tenha extrapolado irá liberar o recurso 
+                    printf("Thread %d[tipo %d] não conseguiu pegar espaço! Liberando alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    sem_post(threadArgs->alimento);
+                    return NULL;
+                }
+            } else {
+                printf("Thread %d[tipo %d] tentando pegar alimento\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                if(sem_trywait(threadArgs->alimento) == 0) {
+                    printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    break; //Caso tenha conseguido pegar o recurso
+                }
+
+                //Difftime calcula a diferença de tempo dos parâmetros e retorna o valor do tipo double em segundos
+                tempoColetaRecurso = difftime(time(NULL), tempoInicioColetaRecurso);
+
+                if(tempoColetaRecurso >= TIME_LIMIT){ //Caso o tempo de tenha extrapolado irá liberar o recurso
+                    printf("Thread %d[tipo %d] não conseguiu pegar alimento! Liberando espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+                    sem_post(threadArgs->espaco);
+                    return NULL;
+                }
+            }
+            sleep(1); //thread dorme por 1s antes de tentar novamente
+        }
 
         //Thread dorme por até 5s após pegar os dois recursos, simulando crescimento
         sleep(rand() % 5);
@@ -235,16 +295,9 @@ void* threadFunction(void *args) {
     printf("Thread %d terminou\n", threadArgs->threadNum);
     printf("Tipo da colonia: %d\n", threadArgs->tipoColonia);
     printf("População inicial: %g\n", threadArgs->popInicial);
-    printf("Taxa de crescimento: %g\n", threadArgs->txCrescimento / 10);
+    printf("Taxa de crescimento: %g%\n", threadArgs->txCrescimento);
     printf("Tempo: %d\n", threadArgs->tempoTotal);
     printf("População final: %g\n", threadArgs->popAtual);
     printf("Tempo decorrido: %gs\n", threadArgs->tempoDecorrido);
     printf("\n\n");
-}
-
-//Função executada caso o tempo estipulado seja estrapolado
-void deadlockTimeout(int signum) {
-    //Exibe mensagem e encerra a aplicação
-    printf("DEADLOCK DETECTADO!!! Tempo de espera excedido! Encerrando...\n\n");
-    exit(1);
 }

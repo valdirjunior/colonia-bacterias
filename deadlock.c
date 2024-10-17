@@ -1,10 +1,30 @@
 /*
-Aplicando a prevenção por Mutex Hierárquico:
-Alteração:
-    - Adicionado um novo recurso que será pego antes dos demais: Técnico de Laboratorio.
+Para compilar utilize:
 
-Todas as colônias precisarão de um técnico para lhes fornecer os outros recursos. O semáforo tecnico
-será pego primeiro, caso consiga, irá pegar os demais, mesmo tendo dois tipos de colônias.
+gcc -o deadlock deadlock.c -lpthread -lrt -lm
+
+Para executar utilize(Você pode substituir pelos valores de sua preferência):
+
+./deadlock -p 200 -x 3 -t 15 -n 4 -r 1
+
+-p = população inicial                    ex: 200
+-x = taxa de crescimento em %             ex: 3%
+-t = tempo total simulado em segundos     ex: 15
+-n = número de threads                    ex: 4
+-r = número de recursos de cada tipo      ex: 1
+
+Para que haja deadlock, o número de recursos precisa ser  menor do que o
+número de threads. Mais tempo de simulação também favorece para que ocorram
+deadlocks. Caso não informe o número de threads, a quantidade será definida
+pelo seu processador.
+Em caso de dúvida sobre os comandos, execute no terminal:
+
+./deadlock -h
+
+ou
+
+./deadlock --help
+
 */
 
 #include <getopt.h>
@@ -17,6 +37,9 @@ será pego primeiro, caso consiga, irá pegar os demais, mesmo tendo dois tipos 
 #include <semaphore.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
+
+#define TIME_LIMIT 20  //Tempo em segundos para considerar um deadlock
 
 #ifndef __GLIBC_USE_LIB_EXT1
     typedef int errno_t;
@@ -42,18 +65,17 @@ typedef struct {
     int tempoAtual;              //Contador de tempo
     sem_t* alimento;             //Semáforo para o alimento
     sem_t* espaco;               //Semáforo para o espaço
-    sem_t* tecnico;              //Semáforo para o técnico de laboratório
     double tempoDecorrido;       //Contador do tempo real de execução, para controle e debug
 }ThreadArgs;
 
 //Struct para as opções de entrada manual de argumentos
 static struct option long_options[] = 
 {
-    {"popInicial", required_argument, NULL, 'p'},
-    {"txCrescimento", required_argument, NULL, 'x'},
-    {"tempoTotal", required_argument, NULL, 't'},
-    {"numThreads", required_argument, NULL, 'n'},
-    {"numRecursos", required_argument, NULL, 'r'},
+    {"populacao", required_argument, NULL, 'p'},
+    {"taxa", required_argument, NULL, 'x'},
+    {"tempo", required_argument, NULL, 't'},
+    {"threads", required_argument, NULL, 'n'},
+    {"recursos", required_argument, NULL, 'r'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
 };
@@ -83,17 +105,13 @@ int main(int argc, char **argv) {
     sem_t espaco;
     sem_init(&espaco, 0, inputFlags.numRecursos);
 
-    //Inicializa semáforos de técnicos
-    sem_t tecnico;
-    sem_init(&tecnico, 0, inputFlags.numRecursos);
-
     ThreadArgs *threadArgs = malloc(sizeof(ThreadArgs) * inputFlags.numThreads);
     pthread_t threads[inputFlags.numThreads];
 
     //Inicializador das threads
     for(int i = 0; i < inputFlags.numThreads; i++) {
         //Defino a primeira thread como tipo 2, e as demais como tipo 1
-        if(i == 0) {
+        if((i % 2) == 0) {
             threadArgs[i].tipoColonia = 2;
         } else {
             threadArgs[i].tipoColonia = 1;
@@ -106,7 +124,6 @@ int main(int argc, char **argv) {
         threadArgs[i].popAtual = inputFlags.popInicial;
         threadArgs[i].alimento = &alimento;
         threadArgs[i].espaco = &espaco;
-        threadArgs[i].tecnico = &tecnico;
         threadArgs[i].tempoDecorrido = 0;
 
         pthread_create(&threads[i], NULL, threadFunction, &threadArgs[i]);
@@ -118,7 +135,6 @@ int main(int argc, char **argv) {
 
     sem_destroy(&alimento);
     sem_destroy(&espaco);
-    sem_destroy(&tecnico);
 
     return 0;
 }
@@ -159,12 +175,12 @@ errno_t manualImput(int argc, char **argv, InputFlags *inputFlags) {
         case 'h':
             printf("Acessando: %s [OPÇÕES]\n", argv[0]);
             printf("Opções: \n");
-            printf("\t-p, --popInicial\t\tPopulação inicial\n");
-            printf("\t-x, --txCrescimento\t\tTaxa de crescimento\n");
-            printf("\t-t, --tempoTotal\t\tTempo total");
-            printf("\t-n, --numThreads\t\tNúmero de threads\n");
-            printf("\t-r, --numRecursos\t\tNúmero de recursos\n");
-            printf("\t-h, --help\t\t\tExibir esta mensagem de ajuda\n");
+            printf("\t-p, --populacao popInicial\t\tPopulação inicial\n");
+            printf("\t-x, --taxa txCrescimento\t\tTaxa de crescimento\n");
+            printf("\t-t, --tempo tempoTotal\t\t\tTempo total\n");
+            printf("\t-n, --threads numThreads\t\tNúmero de threads\n");
+            printf("\t-r, --recursos numRecursos\t\tNúmero de recursos\n");
+            printf("\t-h, --help\t\t\t\ttExibir esta mensagem de ajuda\n");
             return EINVAL;
         default:
             break;
@@ -200,12 +216,12 @@ void* threadFunction(void *args) {
     ThreadArgs *threadArgs = (ThreadArgs *)args;
 
     while (threadArgs->tempoAtual <= threadArgs->tempoTotal) {
-        //Thread dorme até 5s antes de tentar pegar recurso
-        sleep(rand() % 5);
+        //Thread dorme até 2s antes de tentar pegar recurso
+        sleep(rand() % 2);
 
-        //Thread pega um técnico de laboratório para lhe servir alimento e espaço
-        sem_wait(threadArgs->tecnico);
-        printf("Thread %d[tipo %d] pegou um técnico!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);    
+        //Definição de alarme que age ao estrapolar o temmpo definido para deadlock
+        signal(SIGALRM, deadlockTimeout);
+        alarm(TIME_LIMIT);
 
         //Se a colônia for do tipo 1, irá pegar o alimento primeiro e depois o espaço
         if(threadArgs->tipoColonia == 1) {
@@ -224,6 +240,9 @@ void* threadFunction(void *args) {
             printf("Thread %d[tipo %d] pegou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
         }
 
+        //Zera o tempo do alarme, sinalizando que a operação até aqui não ultrapassou o tempo estipulado
+        alarm(0);
+
         //Thread dorme por até 5s após pegar os dois recursos, simulando crescimento
         sleep(rand() % 5);
 
@@ -237,8 +256,6 @@ void* threadFunction(void *args) {
         printf("Thread %d[tipo %d] liberou espaço!\n", threadArgs->threadNum, threadArgs->tipoColonia);
         printf("\n");
         printf("Tempo de crescimento da thread %d: %d\n\n", threadArgs->threadNum, threadArgs->tempoAtual);
-        sem_post(threadArgs->tecnico);
-        printf("Thread %d[tipo %d] liberou técnico!\n", threadArgs->threadNum, threadArgs->tipoColonia);
         threadArgs->tempoAtual ++; 
     }
     //Cálculo do tempo real em segundos que a thread executou
@@ -247,7 +264,7 @@ void* threadFunction(void *args) {
     printf("Thread %d terminou\n", threadArgs->threadNum);
     printf("Tipo da colonia: %d\n", threadArgs->tipoColonia);
     printf("População inicial: %g\n", threadArgs->popInicial);
-    printf("Taxa de crescimento: %g\n", threadArgs->txCrescimento / 10);
+    printf("Taxa de crescimento: %g%\n", threadArgs->txCrescimento);
     printf("Tempo: %d\n", threadArgs->tempoTotal);
     printf("População final: %g\n", threadArgs->popAtual);
     printf("Tempo decorrido: %gs\n", threadArgs->tempoDecorrido);
