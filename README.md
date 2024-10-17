@@ -27,7 +27,7 @@ $$P(t) = P(0) . e^{rt}$$
 - *r* = Taxa de crescimento;
 - *t* = Tempo em segundos.
 
-Como cada ciclo da thread simula 1s de tempo, o cálculo considera *t* como sendo sempre 1. *P(t)* será a somatória total, e *P(0)* será a população no início de cada ciclo.
+Como cada ciclo da thread simula 1s de tempo, o cálculo considera *t* como sendo sempre 1. *P(t)* será a somatória total, e *P(0)* será a população no início de cada ciclo. No problema, não levamos em conta a quantidade de alimento ou a aréa disponível, supomos que as quantidades sejam ilimitadas. Os recursos em questão são tratados como vias de acesso à essas regalias, ou seja, se eu executar com 1 recurso de cada, significa que tenho 1 via de acesso, 1 caminho, para alimento e para espaço. Desta maneira, conseguimos compreender o tema principal(compartilhamento de recursos) sem elevar considerávelmente a complexidade do problema.
 
 # Instruções #
 
@@ -49,7 +49,7 @@ Caso ainda tenha dúvidas, utilize:
 
     ./nomedoarquivocompilado --help
 
-    ou
+ou
 
     ./nomedoarquivocompilado -H    
 
@@ -105,3 +105,8 @@ Execução:
     
 # Considerações Finais #
 
+Foram realizados alguns testes com cenários distintos. Minha máquina pessoal possui somente 4 núcleos, então executo somente 4 threads, variando a quantidade de recursos e o tempo.
+
+O principal cenário testado foi com 4 threads e 1 recurso de cada, com 15 intervalos de tempo. É o cenário com a maior probabilidade de ocorrer deadlock. Com mais recurso disponível foram pouquíssimas vezes que ocorreu, mesmo com mais tempo.
+
+Para 4 threads, 1 recurso e 15s, o melhor desempenho foi do método [Timeout](./timeout.c).
