@@ -2,6 +2,10 @@
 
 Para o aprendizado sobre compartilhamento de recursos por tarefas distintas, foram desenvolvidas aplicações em `C` que simulam cenários em que podem ocorrer deadlocks. As principais bibliotecas utilizadas foram `pthread.h` e `semaphore.h`. Criei 4 versões onde cada uma apresenta uma situação um pouco diferente. O problema simulado é: colônias de bactérias (threads) que disputam por espaço e alimento (semáforos).
 
+**NOTA: As aplicações foram desenvolvidas para sistemas Linux.**
+
+**ATENÇÃO: O foco das aplicações está na compreensão do processamento multithread e na gestão de recursos compartilhados. Por isso, não levaremos em conta a quantificação física de alimento e espaço, trataremos como recursos ilimitados, porém com acesso controlado pelos semáforos.**
+
 Segue a descrição:
 
 1.  No arquivo [deadlock.c](./deadlock.c) defini 2 tipos de colônias, assim, algumas colônias obtém os recursos na ordem contrária das demais, ocasionando possíveis deadlocks. Não há mecanismos que previnam ou solucionem.
@@ -25,7 +29,7 @@ $$P(t) = P(0) . e^{rt}$$
 - *r* = Taxa de crescimento;
 - *t* = Tempo em segundos.
 
-Como cada ciclo da thread simula 1s de tempo, o cálculo considera *t* como sendo sempre 1. *P(t)* será a somatória total, e *P(0)* será a população no início de cada ciclo. No problema, não levamos em conta a quantidade de alimento ou a aréa disponível, supomos que as quantidades sejam ilimitadas. Os recursos em questão são tratados como vias de acesso a essas regalias, ou seja, se eu executar com 1 recurso de cada, significa que tenho 1 via de acesso, 1 caminho, para alimento e para espaço. Desta maneira, conseguimos compreender o tema principal(compartilhamento de recursos) sem elevar considerávelmente a complexidade do problema.
+Como cada ciclo da thread simula 1s de tempo, o cálculo considera *t* como sendo sempre 1. *P(t)* será a somatória total, e *P(0)* será a população no início de cada ciclo.
 
 # Instruções #
 
@@ -105,4 +109,29 @@ Foram realizados alguns testes com cenários distintos. Minha máquina pessoal p
 
 O principal cenário testado foi com 4 threads e 1 recurso de cada, com 15 intervalos de tempo. É o cenário com a maior probabilidade de ocorrer deadlock. Com mais recurso disponível foram pouquíssimas vezes que ocorreu, mesmo com mais tempo.
 
-No geral, o melhor desempenho foi do método [Timeout](./timeout.c). Nos testes com 4 threads, 1 recurso e 15s, chegou executar em quase a metade do tempo das outras.
+No principal teste o melhor desempenho foi do método [Timeout](./timeout.c). Nos testes com 4 threads, 1 recurso e 15s, chegou executar em 65% do tempo das outras. No mesmo cenário, mas com 15s, o desempenho foi de 59% do tempo.
+
+Segue abaixo tabela de comparação de alguns cenários com os métodos de prevenção:
+
+**Para os testes todos os sleeps antes do início e simulando trabalho foram fixados em 2s, para uma comparação justa**
+
+| Prevenção | Threads | Recursos | Tempo Simulado(s) | Tempo Real(s) |
+|:----------|:-------:|:--------:|:-----------------:|:-------------:|
+| Ordenação | 4 | 1 | 15 | 122 |
+| Hierarquia | 4 | 1 | 15 | 122 |
+| Timeout | 4 | 1 | 15 | 80 |
+| Ordenação | 4 | 1 | 30 | 242 |
+| Hierarquia | 4 | 1 | 30 | 242 |
+| Timeout | 4 | 1 | 30 | 144 |
+| Ordenação | 4 | 2 | 15 | 62 |
+| Hierarquia | 4 | 2 | 15 | 62 |
+| Timeout | 4 | 2 | 15 | 80 |
+| Ordenação | 4 | 2 | 30 | 122 |
+| Hierarquia | 4 | 2 | 30 | 122 |
+| Timeout | 4 | 2 | 30 | 140 |
+| Ordenação | 4 | 3 | 15 | 62 |
+| Hierarquia | 4 | 3 | 15 | 62 |
+| Timeout | 4 | 3 | 15 | 62 |
+| Ordenação | 4 | 3 | 30 | 122 |
+| Hierarquia | 4 | 3 | 30 | 122 |
+| Timeout | 4 | 3 | 30 | 122 |
