@@ -11,7 +11,7 @@ Segue a descrição:
 
 3. No arquivo [hierarquia.c](./hierarquia.c) apliquei o método de Hierarquia de Recursos. Adicionei um novo recurso de controle que chamei de técnico de laboratório. Haverá a mesma quantidade de técnicos em relação aos outros recursos. Cada colônia precisará obter um técnico antes de tentar obter um recurso. Tambem mantive os dois tipos de colônias.
 
-4. No arquivo [timeout.c](./timeout.c) apliquei o método de Timeout. Quando uma colônia pegar o primeiro recurso e não conseguir pegar o segundo, irá tentar novamente durante um tempo predefinido. Caso extrapole o tempo e não tenha obtido o segundo recurso, o primeiro recurso será liberado e irá tentar novamente obter os dois recursos posteriormente.
+4. No arquivo [timeout.c](./timeout.c) apliquei o método de Timeout. Quando uma colônia pegar o primeiro recurso e não conseguir pegar o segundo, irá tentar novamente durante um tempo predefinido. Caso extrapole o tempo e não tenha obtido o segundo recurso, o primeiro recurso será liberado e irá tentar obter os dois recursos posteriormente.
 
 5. Cada arquivo contém as instruções para compilar, executar e os comandos básicos. Caso preferir, pode consultar na seção [Instruções](#instruções)
 
