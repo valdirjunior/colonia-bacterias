@@ -182,7 +182,7 @@ Quando testado com 3 recursos de cada, todos tiveram o mesmo praticamente desemp
 | Hierarquia | 8 | 1 | 15 | 242,3 |
 | Timeout | 8 | 1 | 15 | 94,3 |
 
-Por fim, realizei um teste com maior escassez de recursos, com 8 threads(cpu com somente 4) e somente 1 recurso de cada. Novamente o método de [Timeout](./timeout.c) se mostra mais eficaz, executando em 39% do tempo dos demais;
+Por fim, realizei um teste com maior escassez de recursos, com 8 threads(cpu com somente 4) e somente 1 recurso de cada. Novamente o método de [Timeout](./timeout.c) se mostra mais eficaz, executando em 39% do tempo dos demais.
 
 # Considerações Finais #
 
