@@ -22,7 +22,7 @@ Segue a descrição:
 
 4. No arquivo [timeout.c](./timeout.c) apliquei o método de Timeout. Quando uma colônia pegar o primeiro recurso e não conseguir pegar o segundo, irá tentar novamente durante um tempo predefinido. Caso extrapole o tempo e não tenha obtido o segundo recurso, o primeiro recurso será liberado e irá tentar obter os dois recursos posteriormente.
 
-5. Cada arquivo contém as instruções para compilar, executar e os comandos básicos. Caso preferir, pode consultar na seção [Instruções](#instruções)
+5. Cada arquivo contém as instruções para compilar, executar e os comandos básicos. Caso preferir, pode consultar na seção [Instruções](#instruções).
 
 # Crescimento Populacional #
 
@@ -188,6 +188,6 @@ Por fim, realizei um teste com maior escassez de recursos, com 8 threads(cpu com
 
 Em relação à complexidade dos algoritmos, não tive grandes dificuldades, o maior desafio foi a implementação das flags por linha de comando, e a identificação de deadlock. Esta última, apesar de ser simples, levou algumas horas de testes e pesquisa, talvez por falta de conhecimento, ou por buscar por caminhos ruins.
 
-Os 4 programas são quase idênticos, tendo alterações pontuais para atender a demanda de cada um, sendo o de [Ordenação](./ordenacao.c) o mais simples deles. O de [Timeout](./timeout.c) precisou de vários tentativas até encontrar uma lógica que não falhasse em algumas situações. Ainda poderia ter utilizado neste último a função `sem_timedwait`da biblioteca `pthread.h`, porém tive um pouco de dificuldade e preferi simplificar.
+Os 4 programas são quase idênticos, tendo alterações pontuais para atender a demanda de cada um, sendo o de [Ordenação](./ordenacao.c) o mais simples deles. O de [Timeout](./timeout.c) precisou de vários tentativas até encontrar uma lógica que não falhasse em algumas situações. Ainda poderia ter utilizado neste último a função `sem_timedwait` da biblioteca `pthread.h`, porém tive um pouco de dificuldade e preferi simplificar.
 
 Por fim, pude compreender a importância da gestão dos recursos, para fim de evitar travamento e melhorar o desempenho de tarefas. A demanda da atividade era de implementar somente uma das técnicas, porém decidi me desafiar a fazer as três, podendo assim comparar a eficiência de cada em diferentes cenários.
