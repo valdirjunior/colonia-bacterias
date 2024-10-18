@@ -229,6 +229,7 @@ void* threadFunction(void *args) {
     while (threadArgs->tempoAtual <= threadArgs->tempoTotal) {
         //Thread dorme até 2s antes de tentar pegar recurso
         sleep(rand() % 2);
+        // sleep(2);
 
         //Thread pega um técnico de laboratório para lhe servir alimento e espaço
         sem_wait(threadArgs->tecnico);
@@ -253,19 +254,20 @@ void* threadFunction(void *args) {
 
         //Thread dorme por até 5s após pegar os dois recursos, simulando crescimento
         sleep(rand() % 5);
+        // sleep(2);
 
         //Somatória de crescimento: P(t) = P(0) * e^(rt), no caso, o meu P(0) é o P(t-1), pois calcula a cada passo de tempo, e o t da exponencial será sempre 1
         threadArgs->popAtual = threadArgs->popAtual * exp((threadArgs->txCrescimento / 100));
 
         //Thread libera os recursos
         sem_post(threadArgs->alimento);
-        printf("Thread %d[tipo %d] liberou alimento!\n", threadArgs->threadNum, threadArgs->tipoColonia);
+        printf("Thread %d[tipo %d] liberou alimento!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
         sem_post(threadArgs->espaco);
-        printf("Thread %d[tipo %d] liberou espaço!\n", threadArgs->threadNum, threadArgs->tipoColonia);
-        printf("\n");
+        printf("Thread %d[tipo %d] liberou espaço!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
+
         printf("Tempo de crescimento da thread %d: %d\n\n", threadArgs->threadNum, threadArgs->tempoAtual);
         sem_post(threadArgs->tecnico);
-        printf("Thread %d[tipo %d] liberou técnico!\n", threadArgs->threadNum, threadArgs->tipoColonia);
+        printf("Thread %d[tipo %d] liberou técnico!\n\n", threadArgs->threadNum, threadArgs->tipoColonia);
         threadArgs->tempoAtual ++; 
     }
     //Cálculo do tempo real em segundos que a thread executou
